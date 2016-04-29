@@ -92,6 +92,17 @@ func (logger *MarLogger) Log(stampName string, message string, options int) erro
 
 }
 
+// LogIf Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
+func (logger *MarLogger) LogIf(condition bool, stampName string, message string, options int) error {
+
+	if condition == true {
+		return logger.Log(stampName, message, options)
+	}
+
+	return nil
+
+}
+
 // AddStamp ...
 func (logger *MarLogger) AddStamp(stampName string, outputHandleKeys ...string) error {
 

@@ -8,20 +8,19 @@ import (
 )
 
 const (
-	// NOTE: Refer to Log package documentation for the meaning of these, these are just poiting to them.
-	// FlagLdate ...
+	// FlagLdate Refer to the Log package documentation
 	FlagLdate = log.Ldate
-	// FlagLtime ...
+	// FlagLtime Refer to the Log package documentation
 	FlagLtime = log.Ltime
-	// FlagLmicroseconds ...
+	// FlagLmicroseconds Refer to the Log package documentation
 	FlagLmicroseconds = log.Lmicroseconds
-	// FlagLlongfile ...
+	// FlagLlongfile Refer to the Log package documentation
 	FlagLlongfile = log.Llongfile
-	// FlagLshortfile ...
+	// FlagLshortfile Refer to the Log package documentation
 	FlagLshortfile = log.Lshortfile
-	// FlagLUTC ...
+	// FlagLUTC Refer to the Log package documentation
 	FlagLUTC = log.LUTC
-	// FlagLstdFlags ...
+	// FlagLstdFlags Refer to the Log package documentation
 	FlagLstdFlags = log.Ldate | log.Ltime
 )
 
@@ -36,6 +35,14 @@ const (
 
 // MarLog Variable with precreated MarLogger
 var MarLog *MarLogger
+
+func init() {
+	MarLog = new(MarLogger)
+	MarLog.Prefix = ""
+	MarLog.Flags = FlagLdate | FlagLtime | FlagLshortfile
+	MarLog.stamps = make(map[string]*stamp)
+	MarLog.outputHandles = make(map[string]*outputHandle)
+}
 
 // MarLogger The MarLogger type
 type MarLogger struct {
@@ -107,8 +114,6 @@ func (logger *MarLogger) Log(condition bool, stampName string, message string, o
 			os.Exit(-1)
 		}
 
-		return nil
-
 	}
 
 	return nil
@@ -152,7 +157,7 @@ func (logger *MarLogger) AddOutputHandle(handleName string, handle io.Writer) er
 	return nil
 }
 
-// ActivateStamps ...
+// ActivateStamps Sets the Stamps with names passed as arguments as active
 func (logger *MarLogger) ActivateStamps(stampNames ...string) error {
 
 	if len(stampNames) == 0 {
@@ -172,7 +177,7 @@ func (logger *MarLogger) ActivateStamps(stampNames ...string) error {
 	return nil
 }
 
-// DeactivateStamps ...
+// DeactivateStamps Sets the Stamps with names passed as arguments as not active
 func (logger *MarLogger) DeactivateStamps(stampNames ...string) error {
 
 	if len(stampNames) == 0 {
@@ -190,12 +195,4 @@ func (logger *MarLogger) DeactivateStamps(stampNames ...string) error {
 	}
 
 	return nil
-}
-
-func init() {
-	MarLog = new(MarLogger)
-	MarLog.Prefix = ""
-	MarLog.Flags = FlagLdate | FlagLtime | FlagLshortfile
-	MarLog.stamps = make(map[string]*stamp)
-	MarLog.outputHandles = make(map[string]*outputHandle)
 }

@@ -70,22 +70,22 @@ type outputHandle struct {
 	handle io.Writer
 }
 
-// LogQ Print a log line with a specific message to stdout (aliast to fmt.Println)
+// LogQ (Quick) Print a log line with a specific message to stdout (aliast to fmt.Println)
 func (logger *MarLogger) LogQ(message string) error {
 	return logger.Log(true, defaultStampName, message, OptionNone)
 }
 
-// LogS Print a log line with a specific message to the output handles of a specific stamp
+// LogS (Simple) Print a log line with a specific message to the output handles of a specific stamp
 func (logger *MarLogger) LogS(stampName string, message string) error {
 	return logger.Log(true, stampName, message, OptionNone)
 }
 
-// LogO Print a log line with a specific message to the output handles of a specific stamp with options
+// LogO (Option) Print a log line with a specific message to the output handles of a specific stamp with options
 func (logger *MarLogger) LogO(stampName string, message string, options int) error {
 	return logger.Log(true, stampName, message, options)
 }
 
-// LogC Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
+// LogC (Condition) Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
 func (logger *MarLogger) LogC(condition bool, stampName string, message string) error {
 	return logger.Log(condition, stampName, message, OptionNone)
 }

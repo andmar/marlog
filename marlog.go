@@ -8,6 +8,11 @@ import (
 )
 
 const (
+	defaultStampName        = "*"
+	defaultOutputHandleName = "*"
+)
+
+const (
 	// FlagLdate Refer to the Log package documentation
 	FlagLdate = log.Ldate
 	// FlagLtime Refer to the Log package documentation
@@ -29,8 +34,6 @@ const (
 	OptionNone = 0 << iota
 	// OptionFatal This option makes the Log... methods call os.Exit(-1) after printing the log message
 	OptionFatal
-	// OptionNewLine ...
-	//OptionNewLine
 )
 
 // MarLog Variable with precreated MarLogger
@@ -42,6 +45,9 @@ func init() {
 	MarLog.Flags = FlagLdate | FlagLtime | FlagLshortfile
 	MarLog.stamps = make(map[string]*stamp)
 	MarLog.outputHandles = make(map[string]*outputHandle)
+
+	MarLog.AddOutputHandle(defaultOutputHandleName, os.Stdout)
+	MarLog.AddStamp(defaultStampName, defaultOutputHandleName)
 }
 
 // MarLogger The MarLogger type
@@ -62,6 +68,11 @@ type stamp struct {
 type outputHandle struct {
 	Name   string // NOTE: Should be the same as the key in the stamps map
 	handle io.Writer
+}
+
+// LogQ Print a log line with a specific message to stdout (aliast to fmt.Println)
+func (logger *MarLogger) LogQ(message string) error {
+	return logger.Log(true, defaultStampName, message, OptionNone)
 }
 
 // LogS Print a log line with a specific message to the output handles of a specific stamp
@@ -120,7 +131,7 @@ func (logger *MarLogger) Log(condition bool, stampName string, message string, o
 
 }
 
-// AddStamp ...
+// AddStamp Try to add a new Stamp with the specific name using the specified output handles
 func (logger *MarLogger) AddStamp(stampName string, outputHandleKeys ...string) error {
 
 	if _, found := logger.stamps[stampName]; found == true {
@@ -142,7 +153,7 @@ func (logger *MarLogger) AddStamp(stampName string, outputHandleKeys ...string) 
 	return nil
 }
 
-// AddOutputHandle ...
+// AddOutputHandle Try to add a new OutputHandle with the specified name and io handle
 func (logger *MarLogger) AddOutputHandle(handleName string, handle io.Writer) error {
 
 	if _, found := logger.outputHandles[handleName]; found == true {

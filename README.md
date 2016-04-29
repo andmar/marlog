@@ -56,4 +56,4 @@ if err != nil {
 fmt.Println("The tenth logged message should not be...")
 ```
 
-Using version at commit `92f6ad82b5b0b7931209539e74cd0981d08074c7`
+Using version at commit `51ac76135b57dbf6f79596c4faa1ba95a9f2f6ed`

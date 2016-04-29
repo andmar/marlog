@@ -26,16 +26,18 @@ const (
 )
 
 const (
-	// OptionFatal ...
-	OptionFatal = 1 << iota
+	// OptionNone Use this option or 0 as the options value when calling the Log... methods and you don't want to pass any options
+	OptionNone = 0 << iota
+	// OptionFatal This option makes the Log... methods call os.Exit(-1) after printing the log message
+	OptionFatal
 	// OptionNewLine ...
 	//OptionNewLine
 )
 
-// MarLog ...
+// MarLog Variable with precreated MarLogger
 var MarLog *MarLogger
 
-// MarLogger ...
+// MarLogger The MarLogger type
 type MarLogger struct {
 	Prefix        string
 	Flags         int
@@ -55,48 +57,58 @@ type outputHandle struct {
 	handle io.Writer
 }
 
-// Log Print a log line with a specific message to the output handles of a specific stamp
-func (logger *MarLogger) Log(stampName string, message string, options int) error {
-
-	if _, found := logger.stamps[stampName]; found == false {
-		return fmt.Errorf("Stamp named \"%s\" does not exist.", stampName)
-	}
-
-	stamp := logger.stamps[stampName]
-
-	if stamp.Active == false {
-		return fmt.Errorf("Stamp named \"%s\" is not active.", stampName)
-	}
-
-	for _, currentHandleKey := range stamp.HandleKeys {
-
-		outputHandle, found := logger.outputHandles[currentHandleKey]
-		if found == false {
-			return fmt.Errorf("Output Handle named \"%s\" not found.", currentHandleKey)
-		}
-		log := log.New(outputHandle.handle, stamp.MessagePrefix, logger.Flags)
-
-		if logger.Prefix != "" {
-			log.Printf("%s: %s\n", logger.Prefix, message)
-		} else {
-			log.Printf("%s\n", message)
-		}
-
-	}
-
-	if options&OptionFatal != 0 { // NOTE: This is kinda the same as using Golang's log.Fatalf
-		os.Exit(-1)
-	}
-
-	return nil
-
+// LogS Print a log line with a specific message to the output handles of a specific stamp
+func (logger *MarLogger) LogS(stampName string, message string) error {
+	return logger.Log(true, stampName, message, OptionNone)
 }
 
-// LogIf Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
-func (logger *MarLogger) LogIf(condition bool, stampName string, message string, options int) error {
+// LogO Print a log line with a specific message to the output handles of a specific stamp with options
+func (logger *MarLogger) LogO(stampName string, message string, options int) error {
+	return logger.Log(true, stampName, message, options)
+}
+
+// LogC Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
+func (logger *MarLogger) LogC(condition bool, stampName string, message string) error {
+	return logger.Log(condition, stampName, message, OptionNone)
+}
+
+// Log Print a log line with a specific message to the output handles of a specific stamp with options, if the condition is true
+func (logger *MarLogger) Log(condition bool, stampName string, message string, options int) error {
 
 	if condition == true {
-		return logger.Log(stampName, message, options)
+
+		if _, found := logger.stamps[stampName]; found == false {
+			return fmt.Errorf("Stamp named \"%s\" does not exist.", stampName)
+		}
+
+		stamp := logger.stamps[stampName]
+
+		if stamp.Active == false {
+			return fmt.Errorf("Stamp named \"%s\" is not active.", stampName)
+		}
+
+		for _, currentHandleKey := range stamp.HandleKeys {
+
+			outputHandle, found := logger.outputHandles[currentHandleKey]
+			if found == false {
+				return fmt.Errorf("Output Handle named \"%s\" not found.", currentHandleKey)
+			}
+			log := log.New(outputHandle.handle, stamp.MessagePrefix, logger.Flags)
+
+			if logger.Prefix != "" {
+				log.Printf("%s: %s\n", logger.Prefix, message)
+			} else {
+				log.Printf("%s\n", message)
+			}
+
+		}
+
+		if options&OptionFatal != 0 { // NOTE: This is kinda the same as using Golang's log.Fatalf
+			os.Exit(-1)
+		}
+
+		return nil
+
 	}
 
 	return nil

@@ -25,6 +25,13 @@ const (
 	FlagLstdFlags = log.Ldate | log.Ltime
 )
 
+const (
+	// OptionFatal ...
+	OptionFatal = 1 << iota
+	// OptionNewLine ...
+	//OptionNewLine
+)
+
 // MarLog ...
 var MarLog *MarLogger
 
@@ -36,7 +43,6 @@ type MarLogger struct {
 	outputHandles map[string]*outputHandle
 }
 
-// Stamp ...
 type stamp struct {
 	Name          string // NOTE: Should be the same as the key in the stamps map
 	Active        bool
@@ -49,8 +55,8 @@ type outputHandle struct {
 	handle io.Writer
 }
 
-// Log ...
-func (logger *MarLogger) Log(stampName string, message string, newLine bool, fatal bool) error {
+// Log Print a log line with a specific message to the output handles of a specific stamp
+func (logger *MarLogger) Log(stampName string, message string, options int) error {
 
 	if _, found := logger.stamps[stampName]; found == false {
 		return fmt.Errorf("Stamp named \"%s\" does not exist.", stampName)
@@ -63,21 +69,22 @@ func (logger *MarLogger) Log(stampName string, message string, newLine bool, fat
 	}
 
 	for _, currentHandleKey := range stamp.HandleKeys {
+
 		outputHandle, found := logger.outputHandles[currentHandleKey]
 		if found == false {
 			return fmt.Errorf("Output Handle named \"%s\" not found.", currentHandleKey)
 		}
 		log := log.New(outputHandle.handle, stamp.MessagePrefix, logger.Flags)
 
-		if newLine == true {
-			log.Println(message)
+		if logger.Prefix != "" {
+			log.Printf("%s: %s\n", logger.Prefix, message)
 		} else {
-			log.Printf(message)
+			log.Printf("%s\n", message)
 		}
 
 	}
 
-	if fatal == true { // NOTE: This is kinda the same as using Golang's log.Fatalf
+	if options&OptionFatal != 0 { // NOTE: This is kinda the same as using Golang's log.Fatalf
 		os.Exit(-1)
 	}
 

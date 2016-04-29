@@ -7,7 +7,7 @@ Simple usage example:
 
 ```go
 log := marlog.MarLog
-log.Prefix = "Test"
+log.Prefix = "TEST"
 
 err := log.AddOutputHandle("STDOUT", os.Stdout)
 err = log.AddOutputHandle("STDERR", os.Stderr)
@@ -33,22 +33,31 @@ if err != nil {
 
 fmt.Println(marlog.MarLog)
 
-err = log.Log("DEBUG", "This is the first logged message", true, false)
-err = log.Log("ERROR", "This is the second logged message", true, false)
+err = log.Log("DEBUG", "This is the first logged message", 0)
+err = log.Log("ERROR", "This is the second logged message", 0)
 
 log.DeactivateStamps("DEBUG")
 
-err = log.Log("DEBUG", "This is the third logged message", true, false)
-err = log.Log("ERROR", "This is the fourth logged message", true, false)
+err = log.Log("DEBUG", "This is the third logged message", 0)
+err = log.Log("ERROR", "This is the fourth logged message", 0)
 
 log.ActivateStamps("DEBUG")
 
-err = log.Log("DEBUG", "This is the fifth logged message", true, false)
-err = log.Log("ERROR", "This is the sixth logged message", true, false)
+err = log.Log("DEBUG", "This is the fifth logged message", 0)
+err = log.Log("ERROR", "This is the sixth logged message", 0)
 
 if err != nil {
 	fmt.Println("Error", err)
 }
+
+err = log.Log("DEBUG", "This is the seventh logged message", 0)
+err = log.Log("DEBUG", "This is the eighth logged message", marlog.OptionFatal)
+
+if err != nil {
+	fmt.Println("Error", err)
+}
+
+fmt.Println("The nineth logged message should not be...")
 ```
 
-Using version at commit `77e7f177ba6cf288560165f94d66b6ba12990ba1`
+Using version at commit `f1125dad46b9fccc0c8ad396eaa56aaacc0de244`

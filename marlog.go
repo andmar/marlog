@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	defaultStampName        = "*"
-	defaultOutputHandleName = "*"
+	defaultStampName        = "*STDOUT"
+	defaultOutputHandleName = "*STDOUT"
 )
 
 const (
@@ -46,8 +46,8 @@ func init() {
 	MarLog.stamps = make(map[string]*stamp)
 	MarLog.outputHandles = make(map[string]*outputHandle)
 
-	MarLog.AddOutputHandle(defaultOutputHandleName, os.Stdout)
-	MarLog.AddStamp(defaultStampName, defaultOutputHandleName)
+	MarLog.SetOutputHandle(defaultOutputHandleName, os.Stdout)
+	MarLog.SetStamp(defaultStampName, defaultOutputHandleName)
 }
 
 // MarLogger The MarLogger type
@@ -131,8 +131,8 @@ func (logger *MarLogger) Log(condition bool, stampName string, message string, o
 
 }
 
-// AddStamp Try to add a new Stamp with the specific name using the specified output handles
-func (logger *MarLogger) AddStamp(stampName string, outputHandleKeys ...string) error {
+// SetStamp Try to setup a new Stamp with the specific name using the specified output handles
+func (logger *MarLogger) SetStamp(stampName string, outputHandleKeys ...string) error {
 
 	if _, found := logger.stamps[stampName]; found == true {
 		return fmt.Errorf("Stamp named \"%s\" already exists.", stampName)
@@ -153,8 +153,8 @@ func (logger *MarLogger) AddStamp(stampName string, outputHandleKeys ...string) 
 	return nil
 }
 
-// AddOutputHandle Try to add a new OutputHandle with the specified name and io handle
-func (logger *MarLogger) AddOutputHandle(handleName string, handle io.Writer) error {
+// SetOutputHandle Try to setup a new OutputHandle with the specified name and io handle
+func (logger *MarLogger) SetOutputHandle(handleName string, handle io.Writer) error {
 
 	if _, found := logger.outputHandles[handleName]; found == true {
 		return fmt.Errorf("Output Handle named \"%s\" already exists.", handleName)
@@ -164,6 +164,21 @@ func (logger *MarLogger) AddOutputHandle(handleName string, handle io.Writer) er
 	newOutputHandle.Name = handleName
 	newOutputHandle.handle = handle
 	logger.outputHandles[handleName] = newOutputHandle
+
+	return nil
+}
+
+// AddOuputHandles Try to add output handles to a Stamp
+func (logger *MarLogger) AddOuputHandles(stampName string, outputHandleKeys ...string) error {
+
+	stamp, found := logger.stamps[stampName]
+	if found == false {
+		return fmt.Errorf("Stamp named \"%s\" does not exist.", stampName)
+	}
+
+	for _, currentHandleKey := range outputHandleKeys {
+		stamp.HandleKeys = append(stamp.HandleKeys, currentHandleKey)
+	}
 
 	return nil
 }

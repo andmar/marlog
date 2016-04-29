@@ -1,5 +1,5 @@
 # marlog
-Simple "Stamp" based logging system in Go
+Simple "Stamp" based logging system in Go.
 
 ## Docs
 

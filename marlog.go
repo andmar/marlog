@@ -113,10 +113,15 @@ func (logger *MarLogger) Log(condition bool, stampName string, message string, o
 			}
 			log := log.New(outputHandle.handle, stamp.MessagePrefix, logger.Flags)
 
+			newLine := "\n"
+			if options&OptionFatal != 0 {
+				newLine = ""
+			}
+
 			if logger.Prefix != "" {
-				log.Printf("%s: %s\n", logger.Prefix, message)
+				log.Printf("%s: %s%s", logger.Prefix, message, newLine)
 			} else {
-				log.Printf("%s\n", message)
+				log.Printf("%s%s", message, newLine)
 			}
 
 		}

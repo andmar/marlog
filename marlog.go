@@ -31,7 +31,7 @@ const (
 
 const (
 	// OptionNone Use this option or 0 as the options value when calling the Log... methods and you don't want to pass any options
-	OptionNone = 0 << iota
+	OptionNone = 1 << iota
 	// OptionFatal This option makes the Log... methods call os.Exit(-1) after printing the log message
 	OptionFatal
 )

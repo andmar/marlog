@@ -111,15 +111,20 @@ func (logger *MarLogger) Log(condition bool, stampName string, message string, o
 			if found == false {
 				return fmt.Errorf("Output Handle named \"%s\" not found.", currentHandleKey)
 			}
-			log := log.New(outputHandle.handle, stamp.MessagePrefix, logger.Flags)
+
+			prefix := ""
+			if logger.Prefix != "" {
+				prefix = logger.Prefix + " "
+			}
+			log := log.New(outputHandle.handle, prefix, logger.Flags)
 
 			newLine := "\n"
 			if options&OptionFatal != 0 {
 				newLine = ""
 			}
 
-			if logger.Prefix != "" {
-				log.Printf("%s: %s%s", logger.Prefix, message, newLine)
+			if stamp.MessagePrefix != "" {
+				log.Printf("%s: %s%s", stamp.MessagePrefix, message, newLine)
 			} else {
 				log.Printf("%s%s", message, newLine)
 			}
@@ -151,7 +156,7 @@ func (logger *MarLogger) SetStamp(stampName string, outputHandleKeys ...string) 
 	newStamp := new(stamp)
 	newStamp.Name = stampName
 	newStamp.Active = true
-	newStamp.MessagePrefix = ""
+	newStamp.MessagePrefix = stampName
 	newStamp.HandleKeys = handleKeys
 	logger.stamps[stampName] = newStamp
 

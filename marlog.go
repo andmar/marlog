@@ -5,6 +5,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
+	"strings"
 )
 
 const (
@@ -42,7 +44,7 @@ var MarLog *MarLogger
 func init() {
 	MarLog = new(MarLogger)
 	MarLog.Prefix = ""
-	MarLog.Flags = FlagLdate | FlagLtime | FlagLshortfile
+	MarLog.Flags = FlagLstdFlags
 	MarLog.stamps = make(map[string]*stamp)
 	MarLog.outputHandles = make(map[string]*outputHandle)
 
@@ -116,17 +118,32 @@ func (logger *MarLogger) Log(condition bool, stampName string, message string, o
 			if logger.Prefix != "" {
 				prefix = logger.Prefix + " "
 			}
-			log := log.New(outputHandle.handle, prefix, logger.Flags)
+
+			log := log.New(outputHandle.handle, prefix, logger.Flags&^FlagLshortfile&^FlagLlongfile)
 
 			newLine := "\n"
 			if options&OptionFatal != 0 {
 				newLine = ""
 			}
 
+			// NOTE: Get Calling function information, refer to https://github.com/golang/go/blob/master/src/log/log.go for more information on this
+			_, file, line, ok := runtime.Caller(2)
+			if !ok {
+				return fmt.Errorf("Error getting Caller information")
+			}
+			fileSplitSlice := strings.Split(file, "/")
+			fileShort := fileSplitSlice[len(fileSplitSlice)-1]
+
 			if stamp.MessagePrefix != "" {
-				log.Printf("%s: %s%s", stamp.MessagePrefix, message, newLine)
+				if logger.Flags&FlagLlongfile != 0 {
+					log.Printf("%s (%v) %s: %s%s", file, line, stamp.MessagePrefix, message, newLine)
+				} else if logger.Flags&FlagLshortfile != 0 {
+					log.Printf("%s (%v) %s: %s%s", fileShort, line, stamp.MessagePrefix, message, newLine)
+				} else {
+					log.Printf("%s: %s%s", stamp.MessagePrefix, message, newLine)
+				}
 			} else {
-				log.Printf("%s%s", message, newLine)
+				log.Printf("%s (%v): %s%s", file, line, message, newLine)
 			}
 
 		}

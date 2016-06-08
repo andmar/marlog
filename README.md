@@ -3,7 +3,7 @@ Simple "Stamp" based logging system in Go.
 
 ## Docs
 
-[@godoc.org](https://godoc.org/github.com/andmar/marlog "marlog @ godoc.org")
+[![@godoc.org](https://godoc.org/github.com/andmar/marlog?status.svg "marlog @ godoc.org")](https://godoc.org/github.com/andmar/marlog)
 
 ## Usage
 

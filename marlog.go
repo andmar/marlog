@@ -1,12 +1,14 @@
 package marlog
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 )
 
 const (
@@ -58,6 +60,9 @@ type MarLogger struct {
 	Flags         int
 	stamps        map[string]*stamp
 	outputHandles map[string]*outputHandle
+	LockedContext string
+	MULock        *sync.Mutex
+	WGLock        *sync.WaitGroup
 }
 
 type stamp struct {
@@ -72,28 +77,58 @@ type outputHandle struct {
 	handle io.Writer
 }
 
+// // LogQ (Quick) Print a log line with a specific message to stdout (aliast to fmt.Println)
+// func (logger *MarLogger) LogQ(message string) error {
+// 	return logger.Log(context.TODO(), true, defaultStampName, message, OptionNone)
+// }
+//
+// // LogS (Simple) Print a log line with a specific message to the output handles of a specific stamp
+// func (logger *MarLogger) LogS(stampName string, message string) error {
+// 	return logger.Log(context.TODO(), true, stampName, message, OptionNone)
+// }
+//
+// // LogO (Option) Print a log line with a specific message to the output handles of a specific stamp with options
+// func (logger *MarLogger) LogO(stampName string, message string, options int) error {
+// 	return logger.Log(context.TODO(), true, stampName, message, options)
+// }
+//
+// // LogC (Condition) Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
+// func (logger *MarLogger) LogC(condition bool, stampName string, message string) error {
+// 	return logger.Log(context.TODO(), condition, stampName, message, OptionNone)
+// }
+
 // LogQ (Quick) Print a log line with a specific message to stdout (aliast to fmt.Println)
-func (logger *MarLogger) LogQ(message string) error {
-	return logger.Log(true, defaultStampName, message, OptionNone)
+func (logger *MarLogger) LogQ(ctx context.Context, message string) error {
+	return logger.Log(ctx, true, defaultStampName, message, OptionNone)
 }
 
 // LogS (Simple) Print a log line with a specific message to the output handles of a specific stamp
-func (logger *MarLogger) LogS(stampName string, message string) error {
-	return logger.Log(true, stampName, message, OptionNone)
+func (logger *MarLogger) LogS(ctx context.Context, stampName string, message string) error {
+	return logger.Log(ctx, true, stampName, message, OptionNone)
 }
 
 // LogO (Option) Print a log line with a specific message to the output handles of a specific stamp with options
-func (logger *MarLogger) LogO(stampName string, message string, options int) error {
-	return logger.Log(true, stampName, message, options)
+func (logger *MarLogger) LogO(ctx context.Context, stampName string, message string, options int) error {
+	return logger.Log(ctx, true, stampName, message, options)
 }
 
 // LogC (Condition) Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
-func (logger *MarLogger) LogC(condition bool, stampName string, message string) error {
-	return logger.Log(condition, stampName, message, OptionNone)
+func (logger *MarLogger) LogC(ctx context.Context, condition bool, stampName string, message string) error {
+	return logger.Log(ctx, condition, stampName, message, OptionNone)
 }
 
 // Log Print a log line with a specific message to the output handles of a specific stamp with options, if the condition is true
-func (logger *MarLogger) Log(condition bool, stampName string, message string, options int) error {
+func (logger *MarLogger) Log(ctx context.Context, condition bool, stampName string, message string, options int) error {
+
+	contextid := ""
+	switch value := ctx.Value("ID").(type) {
+	case string:
+		contextid = value
+	}
+
+	if contextid != logger.LockedContext && logger.LockedContext != "" {
+		logger.MULock.Lock()
+	}
 
 	if condition == true {
 
@@ -133,6 +168,8 @@ func (logger *MarLogger) Log(condition bool, stampName string, message string, o
 			}
 			fileSplitSlice := strings.Split(file, "/")
 			fileShort := fileSplitSlice[len(fileSplitSlice)-1]
+
+			message = "(Context:" + contextid + ") " + message
 
 			if stamp.MessagePrefix != "" {
 				if logger.Flags&FlagLlongfile != 0 {
@@ -248,4 +285,15 @@ func (logger *MarLogger) DeactivateStamps(stampNames ...string) error {
 	}
 
 	return nil
+}
+
+// LockContext Locks the mutex associated with the logger to a context with a ID key equal to contextID.
+func (logger *MarLogger) LockContext(contextID string) {
+	logger.LockedContext = contextID
+}
+
+// UnlockContext Unlocks the mutex associated with the logger.
+func (logger *MarLogger) UnlockContext() {
+	logger.LockedContext = ""
+	logger.MULock.Unlock()
 }

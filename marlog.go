@@ -169,7 +169,9 @@ func (logger *MarLogger) Log(ctx context.Context, condition bool, stampName stri
 			fileSplitSlice := strings.Split(file, "/")
 			fileShort := fileSplitSlice[len(fileSplitSlice)-1]
 
-			message = "(Context:" + contextid + ") " + message
+			if contextid != "" {
+				message = "(Context:" + contextid + ") " + message
+			}
 
 			if stamp.MessagePrefix != "" {
 				if logger.Flags&FlagLlongfile != 0 {

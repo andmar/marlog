@@ -47,8 +47,12 @@ func init() {
 	MarLog = new(MarLogger)
 	MarLog.Prefix = ""
 	MarLog.Flags = FlagLstdFlags
+	MarLog.Active = true
 	MarLog.stamps = make(map[string]*stamp)
 	MarLog.outputHandles = make(map[string]*outputHandle)
+
+	MarLog.LockCond = sync.NewCond(&sync.Mutex{})
+	MarLog.LockCondLog = sync.NewCond(&sync.Mutex{})
 
 	MarLog.SetOutputHandle(defaultOutputHandleName, os.Stdout)
 	MarLog.SetStamp(defaultStampName, defaultOutputHandleName)
@@ -56,13 +60,15 @@ func init() {
 
 // MarLogger The MarLogger type
 type MarLogger struct {
-	Prefix        string
-	Flags         int
-	stamps        map[string]*stamp
-	outputHandles map[string]*outputHandle
-	LockedContext string
-	MULock        *sync.Mutex
-	WGLock        *sync.WaitGroup
+	Prefix           string
+	Flags            int
+	Active           bool
+	stamps           map[string]*stamp
+	outputHandles    map[string]*outputHandle
+	LockingContextID string
+	LockCond         *sync.Cond
+	LockCondLog      *sync.Cond
+	//LockingBufferedChannel chan int
 }
 
 type stamp struct {
@@ -120,14 +126,23 @@ func (logger *MarLogger) LogC(ctx context.Context, condition bool, stampName str
 // Log Print a log line with a specific message to the output handles of a specific stamp with options, if the condition is true
 func (logger *MarLogger) Log(ctx context.Context, condition bool, stampName string, message string, options int) error {
 
+	if !logger.Active {
+		return nil
+	}
+
 	contextid := ""
 	switch value := ctx.Value("ID").(type) {
 	case string:
 		contextid = value
 	}
 
-	if contextid != logger.LockedContext && logger.LockedContext != "" {
-		logger.MULock.Lock()
+	if contextid != logger.LockingContextID && logger.LockingContextID != "" {
+		//fmt.Println("**************************************************************** Will wait!")
+		logger.LockCondLog.L.Lock()
+		defer logger.LockCondLog.L.Unlock()
+		//fmt.Println("**************************************************************** Went forward!")
+	} else {
+		//fmt.Println("**************************************************************** Will not wait!")
 	}
 
 	if condition == true {
@@ -289,13 +304,21 @@ func (logger *MarLogger) DeactivateStamps(stampNames ...string) error {
 	return nil
 }
 
-// LockContext Locks the mutex associated with the logger to a context with a ID key equal to contextID.
+// LockContext TODO Recomment! Locks the mutex associated with the logger to a context with a ID key equal to contextID.
 func (logger *MarLogger) LockContext(contextID string) {
-	logger.LockedContext = contextID
+	fmt.Println("**************************************************************** Wants to Lock!", contextID, logger.LockingContextID)
+	if logger.LockingContextID != "" {
+		fmt.Println("**************************************************************** Locked!", contextID)
+		logger.LockCond.L.Lock()
+	}
+	logger.LockingContextID = contextID
+	fmt.Println("**************************************************************** Gain Access to Locking!", contextID, logger.LockingContextID)
 }
 
-// UnlockContext Unlocks the mutex associated with the logger.
+// UnlockContext TODO Recomment! Unlocks the mutex associated with the logger.
 func (logger *MarLogger) UnlockContext() {
-	logger.LockedContext = ""
-	logger.MULock.Unlock()
+	logger.LockingContextID = ""
+	fmt.Println("**************************************************************** Unlocked!", logger.LockingContextID)
+	logger.LockCond.Broadcast()
+	logger.LockCondLog.Broadcast()
 }

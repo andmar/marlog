@@ -9,6 +9,11 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
+
+	"math/rand"
+
+	"gitlab.com/voipit/thalesecscore/ecscoreapi/utils"
 )
 
 const (
@@ -51,8 +56,9 @@ func init() {
 	MarLog.stamps = make(map[string]*stamp)
 	MarLog.outputHandles = make(map[string]*outputHandle)
 
-	MarLog.LockCond = sync.NewCond(&sync.Mutex{})
-	MarLog.LockCondLog = sync.NewCond(&sync.Mutex{})
+	MarLog.lockCond = sync.NewCond(&sync.Mutex{})
+	MarLog.aquireMU = &sync.Mutex{}
+	MarLog.releaseMU = &sync.Mutex{}
 
 	MarLog.SetOutputHandle(defaultOutputHandleName, os.Stdout)
 	MarLog.SetStamp(defaultStampName, defaultOutputHandleName)
@@ -65,10 +71,10 @@ type MarLogger struct {
 	Active           bool
 	stamps           map[string]*stamp
 	outputHandles    map[string]*outputHandle
-	LockingContextID string
-	LockCond         *sync.Cond
-	LockCondLog      *sync.Cond
-	//LockingBufferedChannel chan int
+	lockingContextID string
+	lockCond         *sync.Cond
+	aquireMU         *sync.Mutex
+	releaseMU        *sync.Mutex
 }
 
 type stamp struct {
@@ -136,13 +142,9 @@ func (logger *MarLogger) Log(ctx context.Context, condition bool, stampName stri
 		contextid = value
 	}
 
-	if contextid != logger.LockingContextID && logger.LockingContextID != "" {
-		//fmt.Println("**************************************************************** Will wait!")
-		logger.LockCondLog.L.Lock()
-		defer logger.LockCondLog.L.Unlock()
-		//fmt.Println("**************************************************************** Went forward!")
-	} else {
-		//fmt.Println("**************************************************************** Will not wait!")
+	if contextid != logger.lockingContextID && logger.lockingContextID != "" {
+		logger.LockContext(utils.CreateContextID())
+		defer logger.UnlockContext()
 	}
 
 	if condition == true {
@@ -304,21 +306,63 @@ func (logger *MarLogger) DeactivateStamps(stampNames ...string) error {
 	return nil
 }
 
-// LockContext TODO Recomment! Locks the mutex associated with the logger to a context with a ID key equal to contextID.
+// LockContext Locks the LockCond associated with the logger to a context with a ID key equal to contextID, while waiting to have exclusive access to main log function.
 func (logger *MarLogger) LockContext(contextID string) {
-	fmt.Println("**************************************************************** Wants to Lock!", contextID, logger.LockingContextID)
-	if logger.LockingContextID != "" {
-		fmt.Println("**************************************************************** Locked!", contextID)
-		logger.LockCond.L.Lock()
+
+	tryAquire := func(id string) bool {
+
+		logger.aquireMU.Lock()
+		defer logger.aquireMU.Unlock()
+
+		if logger.lockingContextID == "" {
+			logger.lockingContextID = id
+			return true
+		}
+
+		return false
+
 	}
-	logger.LockingContextID = contextID
-	fmt.Println("**************************************************************** Gain Access to Locking!", contextID, logger.LockingContextID)
+
+	logger.lockCond.L.Lock()
+	defer logger.lockCond.L.Unlock()
+	for !tryAquire(contextID) {
+		fmt.Println("Blocked. Trying to aquire lock:", contextID, "Current Holder:", logger.lockingContextID)
+		logger.lockCond.Wait()
+	}
+
+	fmt.Println("Proceding...", logger.lockingContextID)
+
 }
 
-// UnlockContext TODO Recomment! Unlocks the mutex associated with the logger.
+// UnlockContext Unlocks all goroutines waiting on the LockConf associated with the logger.
 func (logger *MarLogger) UnlockContext() {
-	logger.LockingContextID = ""
-	fmt.Println("**************************************************************** Unlocked!", logger.LockingContextID)
-	logger.LockCond.Broadcast()
-	logger.LockCondLog.Broadcast()
+
+	logger.releaseMU.Lock()
+	defer logger.releaseMU.Unlock()
+
+	fmt.Println("Releasing Lock. Holder:", logger.lockingContextID)
+
+	logger.lockingContextID = ""
+	logger.lockCond.Broadcast()
+
+}
+
+// CreateContextID Creates a string to be used as Context ID value for logging contexts where no ID is provided via the context object
+func createContextID() string {
+
+	return fmt.Sprint(time.Now().Unix(), "-", randStringRunes(5))
+
+}
+
+// randStringRunes Returns a string of size n with random characters
+func randStringRunes(n int) string {
+
+	letterRunes := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+
 }

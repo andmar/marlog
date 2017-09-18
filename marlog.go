@@ -89,42 +89,42 @@ type outputHandle struct {
 	handle io.Writer
 }
 
-// // LogQ (Quick) Print a log line with a specific message to stdout (aliast to fmt.Println)
-// func (logger *MarLogger) LogQ(message string) error {
-// 	return logger.Log(context.TODO(), true, defaultStampName, message, OptionNone)
-// }
-//
-// // LogS (Simple) Print a log line with a specific message to the output handles of a specific stamp
-// func (logger *MarLogger) LogS(stampName string, message string) error {
-// 	return logger.Log(context.TODO(), true, stampName, message, OptionNone)
-// }
-//
-// // LogO (Option) Print a log line with a specific message to the output handles of a specific stamp with options
-// func (logger *MarLogger) LogO(stampName string, message string, options int) error {
-// 	return logger.Log(context.TODO(), true, stampName, message, options)
-// }
-//
-// // LogC (Condition) Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
-// func (logger *MarLogger) LogC(condition bool, stampName string, message string) error {
-// 	return logger.Log(context.TODO(), condition, stampName, message, OptionNone)
-// }
+// LogSQ (Quick) Print a log line with a specific message to stdout (aliast to fmt.Println)
+func (logger *MarLogger) LogSQ(message string) error {
+	return logger.Log(context.TODO(), true, defaultStampName, message, OptionNone)
+}
 
-// LogQ (Quick) Print a log line with a specific message to stdout (aliast to fmt.Println)
+// LogSS (Simple) Print a log line with a specific message to the output handles of a specific stamp
+func (logger *MarLogger) LogSS(stampName string, message string) error {
+	return logger.Log(context.TODO(), true, stampName, message, OptionNone)
+}
+
+// LogSO (Option) Print a log line with a specific message to the output handles of a specific stamp with options
+func (logger *MarLogger) LogSO(stampName string, message string, options int) error {
+	return logger.Log(context.TODO(), true, stampName, message, options)
+}
+
+// LogSC (Condition) Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
+func (logger *MarLogger) LogSC(condition bool, stampName string, message string) error {
+	return logger.Log(context.TODO(), condition, stampName, message, OptionNone)
+}
+
+// LogQ (Quick) Print a log line with a specific message to stdout (aliast to fmt.Println). Context related features available.
 func (logger *MarLogger) LogQ(ctx context.Context, message string) error {
 	return logger.Log(ctx, true, defaultStampName, message, OptionNone)
 }
 
-// LogS (Simple) Print a log line with a specific message to the output handles of a specific stamp
+// LogS (Simple) Print a log line with a specific message to the output handles of a specific stamp. Context related features available.
 func (logger *MarLogger) LogS(ctx context.Context, stampName string, message string) error {
 	return logger.Log(ctx, true, stampName, message, OptionNone)
 }
 
-// LogO (Option) Print a log line with a specific message to the output handles of a specific stamp with options
+// LogO (Option) Print a log line with a specific message to the output handles of a specific stamp with options. Context related features available.
 func (logger *MarLogger) LogO(ctx context.Context, stampName string, message string, options int) error {
 	return logger.Log(ctx, true, stampName, message, options)
 }
 
-// LogC (Condition) Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
+// LogC (Condition) Print a log line with a specific message to the output handles of a specific stamp, if the condition is true. Context related features available.
 func (logger *MarLogger) LogC(ctx context.Context, condition bool, stampName string, message string) error {
 	return logger.Log(ctx, condition, stampName, message, OptionNone)
 }

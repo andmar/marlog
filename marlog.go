@@ -17,6 +17,10 @@ import (
 )
 
 const (
+	LockingEnabled = true
+)
+
+const (
 	defaultStampName        = "*STDOUT"
 	defaultOutputHandleName = "*STDOUT"
 )
@@ -142,9 +146,11 @@ func (logger *MarLogger) Log(ctx context.Context, condition bool, stampName stri
 		contextid = value
 	}
 
-	if contextid != logger.lockingContextID && logger.lockingContextID != "" {
-		logger.LockContext(utils.CreateContextID())
-		defer logger.UnlockContext()
+	if LockingEnabled {
+		if contextid != logger.lockingContextID && logger.lockingContextID != "" {
+			logger.LockContext(utils.CreateContextID())
+			defer logger.UnlockContext()
+		}
 	}
 
 	if condition == true {
@@ -309,6 +315,13 @@ func (logger *MarLogger) DeactivateStamps(stampNames ...string) error {
 // LockContext Locks the LockCond associated with the logger to a context with a ID key equal to contextID, while waiting to have exclusive access to main log function.
 func (logger *MarLogger) LockContext(contextID string) {
 
+	logger.lockCond.L.Lock()
+	defer logger.lockCond.L.Unlock()
+
+	if !LockingEnabled {
+		return
+	}
+
 	tryAquire := func(id string) bool {
 
 		logger.aquireMU.Lock()
@@ -323,8 +336,6 @@ func (logger *MarLogger) LockContext(contextID string) {
 
 	}
 
-	logger.lockCond.L.Lock()
-	defer logger.lockCond.L.Unlock()
 	for !tryAquire(contextID) {
 		fmt.Println("Blocked. Trying to aquire lock:", contextID, "Current Holder:", logger.lockingContextID)
 		logger.lockCond.Wait()
@@ -339,6 +350,10 @@ func (logger *MarLogger) UnlockContext() {
 
 	logger.releaseMU.Lock()
 	defer logger.releaseMU.Unlock()
+
+	if !LockingEnabled {
+		return
+	}
 
 	fmt.Println("Releasing Lock. Holder:", logger.lockingContextID)
 

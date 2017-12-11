@@ -1,23 +1,12 @@
 package marlog
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"runtime"
 	"strings"
-	"sync"
-	"time"
-
-	"math/rand"
-
-	"gitlab.com/voipit/thalesecscore/ecscoreapi/utils"
-)
-
-const (
-	LockingEnabled = false
 )
 
 const (
@@ -56,13 +45,8 @@ func init() {
 	MarLog = new(MarLogger)
 	MarLog.Prefix = ""
 	MarLog.Flags = FlagLstdFlags
-	MarLog.Active = true
 	MarLog.stamps = make(map[string]*stamp)
 	MarLog.outputHandles = make(map[string]*outputHandle)
-
-	MarLog.lockCond = sync.NewCond(&sync.Mutex{})
-	MarLog.aquireMU = &sync.Mutex{}
-	MarLog.releaseMU = &sync.Mutex{}
 
 	MarLog.SetOutputHandle(defaultOutputHandleName, os.Stdout)
 	MarLog.SetStamp(defaultStampName, defaultOutputHandleName)
@@ -70,15 +54,10 @@ func init() {
 
 // MarLogger The MarLogger type
 type MarLogger struct {
-	Prefix           string
-	Flags            int
-	Active           bool
-	stamps           map[string]*stamp
-	outputHandles    map[string]*outputHandle
-	lockingContextID string
-	lockCond         *sync.Cond
-	aquireMU         *sync.Mutex
-	releaseMU        *sync.Mutex
+	Prefix        string
+	Flags         int
+	stamps        map[string]*stamp
+	outputHandles map[string]*outputHandle
 }
 
 type stamp struct {
@@ -93,65 +72,28 @@ type outputHandle struct {
 	handle io.Writer
 }
 
-// LogSQ (Quick) Print a log line with a specific message to stdout (aliast to fmt.Println)
-func (logger *MarLogger) LogSQ(message string) error {
-	return logger.Log(context.TODO(), true, defaultStampName, message, OptionNone)
+// LogQ (Quick) Print a log line with a specific message to stdout (aliast to fmt.Println)
+func (logger *MarLogger) LogQ(message string) error {
+	return logger.Log(true, defaultStampName, message, OptionNone)
 }
 
-// LogSS (Simple) Print a log line with a specific message to the output handles of a specific stamp
-func (logger *MarLogger) LogSS(stampName string, message string) error {
-	return logger.Log(context.TODO(), true, stampName, message, OptionNone)
+// LogS (Simple) Print a log line with a specific message to the output handles of a specific stamp
+func (logger *MarLogger) LogS(stampName string, message string) error {
+	return logger.Log(true, stampName, message, OptionNone)
 }
 
-// LogSO (Option) Print a log line with a specific message to the output handles of a specific stamp with options
-func (logger *MarLogger) LogSO(stampName string, message string, options int) error {
-	return logger.Log(context.TODO(), true, stampName, message, options)
+// LogO (Option) Print a log line with a specific message to the output handles of a specific stamp with options
+func (logger *MarLogger) LogO(stampName string, message string, options int) error {
+	return logger.Log(true, stampName, message, options)
 }
 
-// LogSC (Condition) Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
-func (logger *MarLogger) LogSC(condition bool, stampName string, message string) error {
-	return logger.Log(context.TODO(), condition, stampName, message, OptionNone)
-}
-
-// LogQ (Quick) Print a log line with a specific message to stdout (aliast to fmt.Println). Context related features available.
-func (logger *MarLogger) LogQ(ctx context.Context, message string) error {
-	return logger.Log(ctx, true, defaultStampName, message, OptionNone)
-}
-
-// LogS (Simple) Print a log line with a specific message to the output handles of a specific stamp. Context related features available.
-func (logger *MarLogger) LogS(ctx context.Context, stampName string, message string) error {
-	return logger.Log(ctx, true, stampName, message, OptionNone)
-}
-
-// LogO (Option) Print a log line with a specific message to the output handles of a specific stamp with options. Context related features available.
-func (logger *MarLogger) LogO(ctx context.Context, stampName string, message string, options int) error {
-	return logger.Log(ctx, true, stampName, message, options)
-}
-
-// LogC (Condition) Print a log line with a specific message to the output handles of a specific stamp, if the condition is true. Context related features available.
-func (logger *MarLogger) LogC(ctx context.Context, condition bool, stampName string, message string) error {
-	return logger.Log(ctx, condition, stampName, message, OptionNone)
+// LogC (Condition) Print a log line with a specific message to the output handles of a specific stamp, if the condition is true
+func (logger *MarLogger) LogC(condition bool, stampName string, message string) error {
+	return logger.Log(condition, stampName, message, OptionNone)
 }
 
 // Log Print a log line with a specific message to the output handles of a specific stamp with options, if the condition is true
-func (logger *MarLogger) Log(ctx context.Context, condition bool, stampName string, message string, options int) error {
-
-	if !logger.Active {
-		return nil
-	}
-
-	contextid := ""
-	switch value := ctx.Value("ID").(type) {
-	case string:
-		contextid = value
-	}
-
-	if LockingEnabled {
-		if contextid != logger.lockingContextID && logger.lockingContextID != "" {
-			logger.LockContext(utils.CreateContextID())
-			defer logger.UnlockContext()
-		}
-	}
+func (logger *MarLogger) Log(condition bool, stampName string, message string, options int) error {
 
 	if condition == true {
 
@@ -191,10 +133,6 @@ func (logger *MarLogger) Log(ctx context.Context, condition bool, stampName stri
 			}
 			fileSplitSlice := strings.Split(file, "/")
 			fileShort := fileSplitSlice[len(fileSplitSlice)-1]
-
-			if contextid != "" {
-				message = "(Context:" + contextid + ") " + message
-			}
 
 			if stamp.MessagePrefix != "" {
 				if logger.Flags&FlagLlongfile != 0 {
@@ -310,74 +248,4 @@ func (logger *MarLogger) DeactivateStamps(stampNames ...string) error {
 	}
 
 	return nil
-}
-
-// LockContext Locks the LockCond associated with the logger to a context with a ID key equal to contextID, while waiting to have exclusive access to main log function.
-func (logger *MarLogger) LockContext(contextID string) {
-
-	logger.lockCond.L.Lock()
-	defer logger.lockCond.L.Unlock()
-
-	if !LockingEnabled {
-		return
-	}
-
-	tryAquire := func(id string) bool {
-
-		logger.aquireMU.Lock()
-		defer logger.aquireMU.Unlock()
-
-		if logger.lockingContextID == "" {
-			logger.lockingContextID = id
-			return true
-		}
-
-		return false
-
-	}
-
-	for !tryAquire(contextID) {
-		fmt.Println("Blocked. Trying to aquire lock:", contextID, "Current Holder:", logger.lockingContextID)
-		logger.lockCond.Wait()
-	}
-
-	fmt.Println("Proceding...", logger.lockingContextID)
-
-}
-
-// UnlockContext Unlocks all goroutines waiting on the LockConf associated with the logger.
-func (logger *MarLogger) UnlockContext() {
-
-	logger.releaseMU.Lock()
-	defer logger.releaseMU.Unlock()
-
-	if !LockingEnabled {
-		return
-	}
-
-	fmt.Println("Releasing Lock. Holder:", logger.lockingContextID)
-
-	logger.lockingContextID = ""
-	logger.lockCond.Broadcast()
-
-}
-
-// CreateContextID Creates a string to be used as Context ID value for logging contexts where no ID is provided via the context object
-func createContextID() string {
-
-	return fmt.Sprint(time.Now().Unix(), "-", randStringRunes(5))
-
-}
-
-// randStringRunes Returns a string of size n with random characters
-func randStringRunes(n int) string {
-
-	letterRunes := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-
 }

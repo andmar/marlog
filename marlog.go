@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	// LockingEnabled Enables the locking mechanism. Will explain better at a later stage. If you don't know what you're doing keep this false.
 	LockingEnabled = false
 )
 
